@@ -1,0 +1,57 @@
+# FanMan — Portainer stack (Compose)
+#
+# Uses the image built by GitHub Actions and published to GHCR.
+# Repository: github.com/kecso/fanman → ghcr.io/kecso/fanman
+#
+# Deploy from Portainer: Stacks → Add stack → Repository (Git URL + branch)
+#   Compose path: compose.portainer.yml
+#
+# Pulling from ghcr.io: for a private GitHub repo, either make the package public
+# (Package settings → Change visibility) or add a GHCR credential in Portainer
+# (Registries) and use the same account that can read the package.
+#
+# Before deploy: create host dir for config (example below uses /opt/fanman/config),
+# copy fan_curves.example.json → fan_curves.json there and edit sysfs paths.
+#
+# Pin a release instead of latest, e.g. image: ghcr.io/kecso/fanman:v1.0.0
+#
+# Adjust published ports, devices, and volume paths for your host.
+
+services:
+  fanman:
+    image: ghcr.io/kecso/fanman:latest
+    container_name: fanman
+    restart: unless-stopped
+
+    cap_add:
+      - SYS_RAWIO
+      - DAC_OVERRIDE
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - /sys:/host-sys:rw
+      - /proc:/host-proc:ro
+      # Replace left side with YOUR host path containing fan_curves.json
+      - /opt/fanman/config:/app/config:rw
+
+    devices:
+      - /dev/sda:/dev/sda
+
+    environment:
+      SYSFS_PREFIX: /host-sys
+      PROC_PREFIX: /host-proc
+      POLL_INTERVAL: "5"
+      LOG_LEVEL: info
+      CONFIG_PATH: /app/config/fan_curves.json
+      WEB_PORT: "8080"
+      FAILSAFE_TEMP: "85"
+      GRACEFUL_SHUTDOWN_MODE: "2"
+      MAX_HISTORY_MINUTES: "60"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

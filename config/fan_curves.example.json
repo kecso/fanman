@@ -1,0 +1,47 @@
+{
+  "version": "1",
+  "global": {
+    "poll_interval": 5,
+    "failsafe_temp": 85
+  },
+  "sensors": {
+    "cpu_temp": {
+      "path": "class/hwmon/hwmon0/temp1_input",
+      "label": "CPU Package",
+      "type": "temperature",
+      "divisor": 1000
+    },
+    "cpu_fan_rpm": {
+      "path": "class/hwmon/hwmon3/fan1_input",
+      "label": "CPU Fan RPM",
+      "type": "rpm"
+    }
+  },
+  "fans": {
+    "cpu_fan": {
+      "pwm_path": "class/hwmon/hwmon3/pwm1",
+      "enable_path": "class/hwmon/hwmon3/pwm1_enable",
+      "rpm_sensor": "cpu_fan_rpm",
+      "label": "CPU Fan",
+      "temp_source": "cpu_temp",
+      "curve": {
+        "min_temp": 40,
+        "max_temp": 75,
+        "min_pwm": 60,
+        "max_pwm": 255,
+        "min_start": 80,
+        "min_stop": 50,
+        "hysteresis": 3,
+        "interpolation": "linear"
+      },
+      "mode": "auto"
+    }
+  },
+  "smart_devices": [
+    {
+      "device": "/dev/sda",
+      "label": "Main HDD",
+      "poll_interval": 60
+    }
+  ]
+}

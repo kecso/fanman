@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FanMan</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body
+  class="fm-root"
+  x-data="dashboard()"
+  x-init="hostname = {{ hostname_json | safe }}; tick(); setInterval(() => tick(), 2000)"
+>
+  <header class="fm-header">
+    <div><strong>FanMan</strong></div>
+    <div class="muted" x-text="hostname"></div>
+    <div class="muted" x-text="'Up ' + fmtUptime(system.uptime_seconds)"></div>
+    <div :class="connected ? 'ok' : 'bad'" x-text="connected ? '● Connected' : '● Offline'"></div>
+  </header>
+
+  <section class="card">
+    <div class="row spread">
+      <div>
+        Load:
+        <span x-text="fmtNum(system.cpu_load_1m)"></span> /
+        <span x-text="fmtNum(system.cpu_load_5m)"></span> /
+        <span x-text="fmtNum(system.cpu_load_15m)"></span>
+      </div>
+      <div>CPU <span x-text="fmtNum(system.cpu_usage_percent)"></span>%</div>
+      <div>Mem <span x-text="fmtNum(system.memory_used_percent)"></span>%</div>
+      <div><span x-text="connected ? '● OK' : '● WAIT'"></span></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Temperatures</h2>
+      <template x-for="[name, s] in tempList" :key="name">
+        <div class="sensor-block">
+          <div class="row spread"><strong x-text="s.label"></strong><span x-text="fmtTemp(s)"></span></div>
+        </div>
+      </template>
+    </section>
+
+    <section class="card">
+      <h2>Fans</h2>
+      <template x-for="[name, f] in fanList" :key="name">
+        <div class="sensor-block">
+          <div class="row spread"><strong x-text="f.label"></strong></div>
+          <div>RPM <span x-text="f.rpm ?? '—'"></span></div>
+          <div>PWM <span class="pwm" x-html="pwmBar(f.pwm_percent)"></span> <span x-text="f.pwm_percent"></span>%</div>
+          <div>Mode <span class="tag" x-text="String(f.mode || '').toUpperCase()"></span></div>
+          <div>Src temp <span x-text="fmtNum(f.temp_current)"></span> °C</div>
+        </div>
+      </template>
+    </section>
+  </div>
+
+  <section class="card" x-show="smartRows.length">
+    <h2>Storage (SMART)</h2>
+    <div class="row spread muted small" style="margin-bottom:8px;">
+      <span>Label</span><span>Temp</span><span>Health</span><span>Hours</span>
+    </div>
+    <template x-for="row in smartRows" :key="row.device">
+      <div class="row spread smart-row">
+        <span x-text="row.label"></span>
+        <span x-text="row.temperature ?? '—'"></span>
+        <span x-text="row.health_status ?? '—'"></span>
+        <span x-text="row.power_on_hours ?? '—'"></span>
+      </div>
+    </template>
+  </section>
+
+  <footer class="muted small">
+    UI refresh 2s · OpenAPI at <code>/docs</code>
+  </footer>
+
+  <script>
+    function dashboard() {
+      return {
+        hostname: "",
+        system: {},
+        fans: {},
+        smartRows: [],
+        connected: false,
+        get fanList() {
+          return Object.entries(this.fans || {});
+        },
+        get tempList() {
+          const raw = window.__fm_sensors || {};
+          return Object.entries(raw).filter(([, s]) => s.unit === "°C");
+        },
+        fmtNum(v) {
+          if (v === undefined || v === null || Number.isNaN(v)) return "—";
+          return Number(v).toFixed(1);
+        },
+        fmtTemp(s) {
+          if (!s || s.value == null) return "—";
+          return Number(s.value).toFixed(1) + " °C" + (s.stale ? " (stale)" : "");
+        },
+        fmtUptime(sec) {
+          if (sec === undefined || sec === null) return "—";
+          const h = Math.floor(sec / 3600);
+          const m = Math.floor((sec % 3600) / 60);
+          return h + "h " + m + "m";
+        },
+        pwmBar(pct) {
+          const n = Math.max(0, Math.min(10, Math.round((pct || 0) / 10)));
+          const on = "█".repeat(n);
+          const off = "░".repeat(10 - n);
+          return '<span>' + on + off + "</span>";
+        },
+        async tick() {
+          try {
+            const [sysR, sensR, fanR, smartR] = await Promise.all([
+              fetch("/api/v1/system"),
+              fetch("/api/v1/sensors"),
+              fetch("/api/v1/fans"),
+              fetch("/api/v1/smart"),
+            ]);
+            this.connected = sysR.ok && sensR.ok && fanR.ok;
+            if (sysR.ok) {
+              this.system = await sysR.json();
+            }
+            if (sensR.ok) {
+              window.__fm_sensors = await sensR.json();
+            } else {
+              window.__fm_sensors = {};
+            }
+            if (fanR.ok) {
+              this.fans = await fanR.json();
+            }
+            if (smartR.ok) {
+              this.smartRows = await smartR.json();
+            }
+          } catch (e) {
+            this.connected = false;
+          }
+        },
+      };
+    }
+  </script>
+</body>
+</html>
