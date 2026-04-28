@@ -17,10 +17,10 @@ Includes Portainer deployment notes (compose path, bind mounts, registry access)
 | File | Purpose |
 |------|---------|
 | [`docker-compose.yml`](docker-compose.yml) | **Docker Compose**: builds from [`Dockerfile`](Dockerfile), bind-mounts `./config`. |
-| [`compose.portainer.yml`](compose.portainer.yml) | **Portainer stack**: pulls a **GHCR image** (no build on the host). Uses absolute paths for host config (see file comments). |
-| [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml) | **CI**: builds and pushes **`ghcr.io/<owner>/<repo>`** on pushes to `main`, tags matching `v*`, or manual workflow runs. |
+| [`compose.portainer.yml`](compose.portainer.yml) | **Portainer stack**: pulls **`ghcr.io/kecso/fanman`** from GitHub Container Registry (no image build on the host). Absolute paths for host config (see file comments). |
+| [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml) | **CI**: publishes **`ghcr.io/kecso/fanman`** from this repository (tags include **`latest`** and semver tags when releases are tagged). |
 
-Pre-built images follow the GitHub repository name (lowercase). **`compose.portainer.yml`** ships with an **`image:`** line pointing at this project’s registry path; **forks** should change it to match their GHCR namespace (or build locally via `docker-compose.yml`).
+To run a **locally built** image instead, use **`docker-compose.yml`** or replace the **`image:`** line in your stack file.
 
 ## Quick start (Docker Compose)
 
@@ -40,12 +40,15 @@ Mounts match `docker-compose.yml`: `CONFIG_PATH=/app/config/fan_curves.json`, ho
 
 ## Quick start (Portainer)
 
-1. Ensure a container image is available—typically from CI (**GHCR**) or built locally and pushed to your registry.
-2. Place **`fan_curves.json`** on the host (see **`compose.portainer.yml`** for the expected bind-mount path, often something like `/opt/fanman/config`).
-3. In Portainer: **Stacks → Add stack →** point at this repository **or** paste **`compose.portainer.yml`**, with compose path **`compose.portainer.yml`** when using Git.
-4. Adjust **`volumes`**, **`devices`**, and **`image:`** (e.g. pin **`ghcr.io/owner/repo:1.0.0`** instead of **`latest`**) for your environment.
+Default stack pulls **`ghcr.io/kecso/fanman:latest`** from GHCR.
 
-Private GHCR packages require registry credentials in Portainer or a public package visibility setting—see [docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md#9-deploying-as-a-portainer-stack).
+1. Complete host prerequisites and prepare **`fan_curves.json`** on the Docker machine (bind-mount path is documented in **`compose.portainer.yml`**, commonly **`/opt/fanman/config`** on the host).
+2. In Portainer: **Stacks → Add stack**, either:
+   - **Repository**: Git URL for this project, compose path **`compose.portainer.yml`**, branch **`main`** (or paste the compose file in the web editor), **or**
+   - Paste **`compose.portainer.yml`** and edit **`volumes`** / **`devices`** as needed.
+3. Optionally pin a release tag instead of **`latest`**, e.g. **`ghcr.io/kecso/fanman:1.0.0`**.
+
+If **`ghcr.io`** denies the pull (private registry, auth), configure Portainer **Registries** or package visibility—see [docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md#9-deploying-as-a-portainer-stack).
 
 ## Authentication
 
@@ -57,7 +60,7 @@ On-disk format is UTF-8 JSON: **`version`**, **`global`**, **`sensors`**, **`fan
 
 ### Full-file rewrite on curve persist
 
-**`PUT /api/v1/fans/{name}/curve`** persists by rewriting **`CONFIG_PATH`** in full (pretty-printed JSON). Comments are not preserved—keep notes in Git or separate docs.
+**`PUT /api/v1/fans/{name}/curve`** persists by rewriting **`CONFIG_PATH`** in full (pretty-printed JSON). Comments are not preserved—keep notes in separate docs if needed.
 
 **`POST /api/v1/config/reload`** reloads from disk without rewriting unless another operation saves.
 

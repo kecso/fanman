@@ -177,18 +177,17 @@ Change `/opt/fanman/config` to wherever you store `fan_curves.json`.
 
 ### Git repository deployment (recommended)
 
-The stack **`compose.portainer.yml`** references a **pre-built GHCR image** (see the **`image:`** field). By default it matches **this repository’s** CI output: **`ghcr.io/<owner>/<repo>`** in lowercase, published when GitHub Actions runs on pushes to the default branch or on **`v*`** tags (see `.github/workflows/publish-image.yml`). Portainer **does not** build the Dockerfile on the host.
+The stack **`compose.portainer.yml`** pulls **`ghcr.io/kecso/fanman`** — container images for this project are published to GitHub Container Registry (see `.github/workflows/publish-image.yml`). Portainer **does not** build the Dockerfile on the host.
 
-1. Confirm the image exists (Actions finished successfully, or you built and pushed manually).
-2. In Portainer: **Stacks → Add stack**.
-3. Choose **Repository**, enter the Git URL and credentials if private.
-4. **Compose path**: `compose.portainer.yml`.
-5. **Reference**: branch name (e.g. `main`).
-6. Optionally enable **automatic updates** if your Portainer edition supports webhook/Git polling.
+1. In Portainer: **Stacks → Add stack**.
+2. Choose **Repository**, enter this project’s Git URL (private repos need credentials).
+3. **Compose path**: `compose.portainer.yml`.
+4. **Reference**: branch name (e.g. `main`).
+5. Optionally enable **automatic updates** if your Portainer edition supports webhook/Git polling.
 
-**Forks / custom registries:** Edit **`image:`** in **`compose.portainer.yml`** so it matches **`ghcr.io/<your-owner>/<your-repo>`** (the workflow publishes using **`github.repository`**), or point at any other registry you use.
+Override **`image:`** only when using a different registry or your own image build.
 
-**GHCR visibility:** For a **private** GitHub repository, the **`ghcr.io/...`** package may also be private. Either **make the container package public** (GitHub → Packages → package settings → visibility) or add **Registry** credentials in Portainer (`ghcr.io`, username + PAT with `read:packages`).
+**GHCR pulls:** If authentication is required, add **`ghcr.io`** under Portainer **Registries**, or adjust package visibility under GitHub **Packages**.
 
 ### Web editor / upload
 
@@ -198,7 +197,7 @@ The stack **`compose.portainer.yml`** references a **pre-built GHCR image** (see
 
 ### Image tags
 
-The workflow publishes **`latest`** on pushes to the default branch and **semver-style tags** when you push **`v*`** tags (for example **`v1.0.0`** → tags like **`1.0.0`** and **`1.0`**). Pin a release in Compose for reproducible stacks, e.g. **`image: ghcr.io/myorg/fanman:1.0.0`** instead of **`latest`**.
+Published tags include **`latest`** and version pins such as **`ghcr.io/kecso/fanman:1.0.0`**. Prefer a pinned tag over **`latest`** when you want a reproducible deployment.
 
 ### Devices and SMART
 

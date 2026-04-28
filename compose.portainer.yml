@@ -1,15 +1,15 @@
 # FanMan — Portainer stack (Compose)
 #
-# Default `image:` matches CI output: ghcr.io/<owner>/<repo> on GitHub (Actions → GHCR).
-# Forks: override `image:` if your registry path differs.
+# Container image: ghcr.io/kecso/fanman (published from GitHub Actions → GHCR).
+# Override `image:` only when pointing at a different registry or local mirror.
 #
 # Portainer: Stacks → Add stack → Repository; compose path: compose.portainer.yml
 #
-# ghcr.io + private repos: publish the package or add registry credentials in Portainer.
+# ghcr.io authentication: configure Portainer Registries or GitHub Packages visibility if pulls fail.
 #
-# Host: prepare config dir (e.g. /opt/fanman/config) and fan_curves.json.
+# Host: config dir on disk (see volumes), containing fan_curves.json.
 #
-# Pin a version if you do not want :latest (e.g. ghcr.io/org/fanman:1.0.0).
+# Pin a tag instead of :latest when you want a fixed version (e.g. ghcr.io/kecso/fanman:1.0.0).
 
 services:
   fanman:
