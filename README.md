@@ -6,25 +6,25 @@ The dashboard uses Alpine.js with `fetch()` polling every few seconds (no npm bu
 
 ## Documentation
 
-**Host preparation (kernel modules, sysfs discovery, Docker, capabilities, SMART devices, firewall)** — required reading before deploy:
+**Host preparation** (kernel modules, sysfs discovery, Docker, capabilities, SMART devices, firewall):
 
 → **[docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md)**
 
-Includes **Portainer stack deployment** (Git stack, compose path, bind-mount paths).
+Includes Portainer deployment notes (compose path, bind mounts, registry access).
 
 ## Deployment layout
 
 | File | Purpose |
 |------|---------|
-| [`docker-compose.yml`](docker-compose.yml) | Local **Docker Compose**: builds from [`Dockerfile`](Dockerfile), uses `./config` next to this repo. |
-| [`compose.portainer.yml`](compose.portainer.yml) | **Portainer stack**: pulls **`ghcr.io/kecso/fanman`** (no image build on the host). Absolute paths for host config (e.g. `/opt/fanman/config`). |
-| [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml) | **GitHub Actions**: build and push to **GHCR** on push to `main`, tags `v*`, or manual run. |
+| [`docker-compose.yml`](docker-compose.yml) | **Docker Compose**: builds from [`Dockerfile`](Dockerfile), bind-mounts `./config`. |
+| [`compose.portainer.yml`](compose.portainer.yml) | **Portainer stack**: pulls a **GHCR image** (no build on the host). Uses absolute paths for host config (see file comments). |
+| [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml) | **CI**: builds and pushes **`ghcr.io/<owner>/<repo>`** on pushes to `main`, tags matching `v*`, or manual workflow runs. |
 
-The GitHub repo should be **`kecso/fanman`** so the registry path matches **`ghcr.io/kecso/fanman`**. Forks should change the `image:` line in `compose.portainer.yml` if their GHCR namespace differs.
+Pre-built images follow the GitHub repository name (lowercase). **`compose.portainer.yml`** ships with an **`image:`** line pointing at this project’s registry path; **forks** should change it to match their GHCR namespace (or build locally via `docker-compose.yml`).
 
-## Quick start (Docker Compose on the host)
+## Quick start (Docker Compose)
 
-After completing [docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md):
+Complete [docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md) on the Docker host, then:
 
 ```bash
 cp config/fan_curves.example.json config/fan_curves.json
@@ -34,34 +34,32 @@ docker compose build
 docker compose up -d
 ```
 
-Open `http://localhost:8080`; OpenAPI docs at `/docs`.
+Open `http://localhost:8080`; API docs at `/docs`.
 
-Mounts and defaults match `docker-compose.yml` (`CONFIG_PATH=/app/config/fan_curves.json`, `/sys` rw, `/proc` ro).
+Mounts match `docker-compose.yml`: `CONFIG_PATH=/app/config/fan_curves.json`, host `/sys` read-write, `/proc` read-only.
 
 ## Quick start (Portainer)
 
-1. Create the GitHub repo (**`kecso/fanman`**) and push this project. Wait for **Actions** to publish **`ghcr.io/kecso/fanman:latest`** (or tag e.g. **`v1.0.0`** for a semver image).
-2. Prepare **`fan_curves.json`** on the Docker host (e.g. under `/opt/fanman/config`).
-3. In Portainer: **Stacks → Add stack → Repository**, set compose path **`compose.portainer.yml`**.
-4. Adjust **`compose.portainer.yml`** if needed (`volumes`, `devices`, or `image: ghcr.io/kecso/fanman:v1.0.0` instead of `latest`).
+1. Ensure a container image is available—typically from CI (**GHCR**) or built locally and pushed to your registry.
+2. Place **`fan_curves.json`** on the host (see **`compose.portainer.yml`** for the expected bind-mount path, often something like `/opt/fanman/config`).
+3. In Portainer: **Stacks → Add stack →** point at this repository **or** paste **`compose.portainer.yml`**, with compose path **`compose.portainer.yml`** when using Git.
+4. Adjust **`volumes`**, **`devices`**, and **`image:`** (e.g. pin **`ghcr.io/owner/repo:1.0.0`** instead of **`latest`**) for your environment.
 
-If the GHCR package is **private**, configure a **registry** in Portainer or make the package **public** in GitHub **Packages** settings.
-
-Details: [Deploying as a Portainer stack](docs/HOST_PREREQUISITES.md#9-deploying-as-a-portainer-stack).
+Private GHCR packages require registry credentials in Portainer or a public package visibility setting—see [docs/HOST_PREREQUISITES.md](docs/HOST_PREREQUISITES.md#9-deploying-as-a-portainer-stack).
 
 ## Authentication
 
-Not implemented. Use FanMan only on networks you trust (e.g. homelab VLAN). Add TLS or reverse-proxy auth before exposing broadly.
+Not implemented; intended for trusted networks first. Use TLS and authentication at the proxy if exposing further.
 
 ## Configuration file
 
-Disk format is UTF-8 JSON: keys `version`, `global`, `sensors`, `fans`, `smart_devices`. No YAML dependency.
+On-disk format is UTF-8 JSON: **`version`**, **`global`**, **`sensors`**, **`fans`**, **`smart_devices`**.
 
 ### Full-file rewrite on curve persist
 
-`PUT /api/v1/fans/{name}/curve` replaces **`CONFIG_PATH`** entirely after updating memory: pretty-printed JSON, no partial edits and no preserved comments—plan commentary in Git messages or separate docs.
+**`PUT /api/v1/fans/{name}/curve`** persists by rewriting **`CONFIG_PATH`** in full (pretty-printed JSON). Comments are not preserved—keep notes in Git or separate docs.
 
-`POST /api/v1/config/reload` only reads the file from disk.
+**`POST /api/v1/config/reload`** reloads from disk without rewriting unless another operation saves.
 
 ## Local development
 
